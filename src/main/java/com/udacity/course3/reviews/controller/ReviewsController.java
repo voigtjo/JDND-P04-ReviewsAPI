@@ -3,8 +3,12 @@ package com.udacity.course3.reviews.controller;
 import com.udacity.course3.reviews.messages.ProductNotFoundException;
 import com.udacity.course3.reviews.model.Product;
 import com.udacity.course3.reviews.model.Review;
+import com.udacity.course3.reviews.model.ReviewD;
 import com.udacity.course3.reviews.repository.ProductRepository;
+import com.udacity.course3.reviews.repository.ReviewDRepository;
 import com.udacity.course3.reviews.repository.ReviewRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +26,7 @@ import java.util.Optional;
  */
 @RestController
 public class ReviewsController {
-
+    Logger logger = LoggerFactory.getLogger(ReviewsController.class);
 
     /**
      * Wires JPA repositories
@@ -31,6 +35,8 @@ public class ReviewsController {
     private ReviewRepository reviewRepository;
     @Autowired
     private ProductRepository productRepository;
+    @Autowired
+    private ReviewDRepository reviewDRepository;
 
     /**
      * Creates a review for a product.
@@ -50,9 +56,12 @@ public class ReviewsController {
 
         review.setProduct(product);
         review.setCreationtime(new Date());
+        reviewRepository.save(review);
 
-        review = reviewRepository.save(review);
-        return ResponseEntity.ok(review);
+        //save to mongodb
+        ReviewD reviewD = new ReviewD(review);
+        reviewD = reviewDRepository.save(reviewD);
+        return ResponseEntity.ok(reviewD);
     }
 
     /**
@@ -63,11 +72,10 @@ public class ReviewsController {
      */
     @RequestMapping(value = "/reviews/products/{productId}", method = RequestMethod.GET)
     public ResponseEntity<List<?>> listReviewsForProduct(@PathVariable("productId") Integer productId) {
-        Optional<Product> optionalProduct = productRepository.findById(productId);
-        Product product = optionalProduct.orElseThrow(ProductNotFoundException::new);
-
-        List<Review> reviews = new ArrayList<>();
-        reviewRepository.findByProduct(product).forEach(review -> reviews.add(review));
+        logger.info("listReviewsForProduct called: productId=" + productId);
+        //read reviews from mongodb by id of product
+        List<ReviewD> reviews = new ArrayList<>();
+        reviewDRepository.findByProductId(productId).forEach(review -> reviews.add(review));
 
         return ResponseEntity.ok(reviews);
     }

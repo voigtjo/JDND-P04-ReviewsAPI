@@ -33,6 +33,10 @@ public class Product {
     public Product() {
     }
 
+    public Product(int id) {
+        this.id = id;
+    }
+
     public Product(String name, String text, @NotNull float price) {
         this.name = name;
         this.text = text;

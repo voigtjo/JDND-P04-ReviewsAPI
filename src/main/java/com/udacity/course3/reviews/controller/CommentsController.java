@@ -2,11 +2,10 @@ package com.udacity.course3.reviews.controller;
 
 import com.udacity.course3.reviews.messages.ProductNotFoundException;
 import com.udacity.course3.reviews.messages.ReviewNotFoundException;
-import com.udacity.course3.reviews.model.Comment;
-import com.udacity.course3.reviews.model.Product;
-import com.udacity.course3.reviews.model.Review;
+import com.udacity.course3.reviews.model.*;
 import com.udacity.course3.reviews.repository.CommentRepository;
 import com.udacity.course3.reviews.repository.ProductRepository;
+import com.udacity.course3.reviews.repository.ReviewDRepository;
 import com.udacity.course3.reviews.repository.ReviewRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,6 +33,8 @@ public class CommentsController {
     private CommentRepository commentRepository;
     @Autowired
     private ReviewRepository reviewRepository;
+    @Autowired
+    private ReviewDRepository reviewDRepository;
 
 
     /**
@@ -50,12 +51,21 @@ public class CommentsController {
     public ResponseEntity<?> createCommentForReview(@PathVariable("reviewId") Integer reviewId, @Valid @RequestBody Comment comment) {
         Optional<Review> optionalReview = reviewRepository.findById(reviewId);
         Review review = optionalReview.orElseThrow(ReviewNotFoundException::new);
-
         comment.setReview(review);
-        comment.setCreationtime(new Date());
 
+        comment.setCreationtime(new Date());
         comment = commentRepository.save(comment);
-        return ResponseEntity.ok(comment);
+
+        //save to mongodb
+        Optional<ReviewD> optionalReviewD = reviewDRepository.findById(reviewId);
+        ReviewD reviewD = optionalReviewD.get();
+
+        CommentD commentD = new CommentD(comment);
+        reviewD.getComments().add(commentD);
+        reviewDRepository.save(reviewD);
+
+
+        return ResponseEntity.ok(commentD);
     }
 
     /**
@@ -69,12 +79,11 @@ public class CommentsController {
      */
     @RequestMapping(value = "/reviews/{reviewId}", method = RequestMethod.GET)
     public List<?> listCommentsForReview(@PathVariable("reviewId") Integer reviewId) {
-        Optional<Review> optionalReview = reviewRepository.findById(reviewId);
-        Review review = optionalReview.orElseThrow(ReviewNotFoundException::new);
+        //read comments from mongodb
+        Optional<ReviewD> optionalReviewD = reviewDRepository.findById(reviewId);
+        ReviewD reviewD = optionalReviewD.get();
 
-        List<Comment> comments = new ArrayList<>();
-        commentRepository.findByReview(review).forEach(comment -> comments.add(comment));
-
+        List<CommentD> comments = reviewD.getComments();
         return comments;
     }
 }
